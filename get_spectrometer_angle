@@ -77,6 +77,51 @@ process_base_image() {
     ${1}/img1.png  ${1}/img2.png 
   convert -blur 2 -colors 6 -normalize ${1}/img2.png  ${1}/img3.png
   convert -threshold 20 ${1}/img3.png ${1}/img4.png
+
+
+  convert -bias 50% -morphology Convolve DoG:0,0,2  \
+    ${1}/img0.png ${1}/img_01.png
+
+  convert -define convolve:scale='200,100%' \
+          -morphology Convolve 'Log:0x2' ${1}/img0.png ${1}/img_02.png
+
+  #---------- 
+  convert -define convolve:scale='200,100%' \
+          -morphology Convolve 'Log:0x3' ${1}/img0.png ${1}/img_12.png
+
+  convert -edge .35 -colorspace gray -normalize -colors 9 \
+    -normalize -negate -gaussian-blur .5 ${1}/img_12.png ${1}/img_13.png 
+
+  convert -bias 50% -morphology Convolve DoG:0,0,2  \
+    ${1}/img_12.png ${1}/img_14.png 
+
+  convert -edge .35 -colorspace gray -normalize -colors 9 \
+    -normalize -negate -gaussian-blur .5 ${1}/img_13.png ${1}/img_15.png 
+
+  #---------- 
+
+  convert -define convolve:scale='200,100%' \
+          -morphology Convolve 'Log:2x5' ${1}/img0.png ${1}/img_22.png
+
+  convert -edge .35 -colorspace gray -normalize -colors 9 \
+    -normalize -negate -gaussian-blur .5 ${1}/img_22.png ${1}/img_23.png 
+
+  convert -bias 50% -morphology Convolve DoG:0,0,2  \
+    ${1}/img_22.png ${1}/img_24.png 
+
+  convert -colorspace gray -normalize -colors 4 -normalize  \
+      ${1}/img_24.png ${1}/img_25.png 
+
+  convert -negate -threshold 20 \
+      ${1}/img_25.png ${1}/img_26.png 
+
+  convert  -gaussian-blur 3 \
+  -append -morphology Erode Plus:3.0 -gaussian-blur 2 -normalize \
+    ${1}/img_26.png  ${1}/img_27.png 
+
+  convert -colorspace -gray -colors 4 -negate -threshold 50 \
+      ${1}/img_27.png ${1}/img_28.png 
+
   echo "${1}/img4.png"
   }
 
@@ -149,6 +194,7 @@ exit
 
 convert -edge .15 -colorspace gray -normalize -colors 8 \
   -normalize -negate -gaussian-blur .5 COIN_SHMS_angle_03566.jpg derp30.png 
+
 convert -morphology Erode Disk:2.0 -gaussian-blur 1 -normalize \
   derp30.png derp31.png
 convert -colors 8 -normalize \
