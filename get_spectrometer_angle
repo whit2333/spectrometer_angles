@@ -40,10 +40,6 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-#if [[ -n "${log_all_plots}" ]] ; then
-#  online_only=
-#fi
-
 if [[ -z "${run_number}" ]] ; then
   echo "Missing argument: run number" >&2
   exit 10
@@ -67,49 +63,65 @@ process_base_image() {
     echo "Missing file: ${1}/img0.png" >&2
     exit 10
   fi
-  convert -edge .15 -colorspace gray -normalize -colors 8 \
-    -normalize -negate -gaussian-blur .5  \
-    -append -morphology Erode Disk:2.0 -gaussian-blur 1 -normalize \
-    -append -blur 2 -colors 6 -normalize \
-    -append -threshold 40 \
-    ${1}/img0.png ${1}/img1.png
+  convert -edge .35 -colorspace gray -normalize -colors 9 \
+    -normalize -negate -gaussian-blur .5 ${1}/img0.png ${1}/img1.png 
+  convert  -morphology Erode Disk:2.0 -gaussian-blur 1 -normalize \
+    ${1}/img1.png  ${1}/img2.png 
+  convert -blur 2 -colors 6 -normalize ${1}/img2.png  ${1}/img3.png
+  convert -threshold 20 ${1}/img3.png ${1}/img4.png
+  echo "${1}/img4.png"
   }
 
 crop_angle_number() {
-  local input_image=img1.png
-  local output_image=img2.png
-  if [[ ! -f "${1}/${input_image}" ]] ; then
-    echo "Missing file: ${1}/${input_image}" >&2
+  local input_image=${1}
+  if [[ ! -f "${1}" ]] ; then
+    echo "Missing file: ${1}" >&2
     exit 10
   fi
-  convert -crop 700x100+20+10 ${1}/${input_image} ${1}/${output_image}
-  convert -crop 120x100+300+10 ${1}/${input_image} ${1}/test2.png
-  convert -resize 700x1\! -normalize ${1}/${output_image} ${1}/test.png
-  convert ${1}/test.png derp.txt
+  local output_image=$(basename ${input_image} .png)
+  local output_dir=$(dirname ${input_image} )
+  #echo ${output_image}
+  #echo ${output_dir}
+
+  convert -crop 700x100+20+10 ${input_image} ${output_dir}/${output_image}_crop1.png
+
+  convert -crop 120x100+300+10 ${output_dir}/${output_image}_crop1.png \
+    ${output_dir}/${output_image}_crop2.png
+
+  convert -resize 700x1\! -normalize ${output_dir}/${output_image}_crop1.png \
+    ${output_dir}/${output_image}_crop3.png
+
+  convert ${output_dir}/${output_image}_crop1.png ${output_dir}/${output_image}_xhist.txt
+
+  echo "${output_dir}/${output_image}_crop1.png"
 }
 
 print_ocr_text() {
   local ocr_text_file=out
-  local input_image=img2.png
-  if [[ ! -f "${1}/${input_image}" ]] ; then
-    echo "Missing file: ${1}/${input_image}" >&2
+  local input_image=${1}
+  if [[ ! -f "${1}" ]] ; then
+    echo "Missing file: ${1}" >&2
     exit 10
   fi
-  tesseract ${1}/${input_image} ${1}/test2.png digits
-  cat ${1}/${ocr_text_file}.txt
+  local output_dir=$(dirname ${input_image} )
+  tesseract ${input_image} ${output_dir}/${ocr_text_file} digits
+  cat ${output_dir}/${ocr_text_file}.txt
 }
 
 
 image_dir=$(get_spectrometer_angle ${run_number})
 echo ${image_dir}
 
-process_base_image ${image_dir}
+processed_image=$(process_base_image ${image_dir})
 
-crop_angle_number ${image_dir}
+echo $processed_image
+cropped_image=$(crop_angle_number ${processed_image})
 
-print_ocr_text ${image_dir}
+echo $cropped_image
 
-identify ${image_dir}/img1.png
+print_ocr_text ${cropped_image}
+
+identify ${cropped_image}
 
 cd ${image_dir} && thunar
 
