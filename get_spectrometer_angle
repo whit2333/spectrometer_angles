@@ -2,11 +2,13 @@
 set -u
 
 run_number=3566
+work_dir=
 
 print_the_help() {
   echo "Usage: get_spectrometer_angle -r <run_number> "
   echo "Options: "
   echo "         -r,--run      Required run number"
+  echo "         -d,--dir      working directory"
   echo "         -h,--help     print help"
   exit 
 }
@@ -25,6 +27,11 @@ do
       shift # past argument
       shift # past value
       ;;
+    -d|--dir)
+      work_dir="$2"
+      shift # past argument
+      shift # past value
+      ;;
     -a|--all)
       #log_all_plots=1
       shift # past argument
@@ -40,6 +47,7 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
+
 if [[ -z "${run_number}" ]] ; then
   echo "Missing argument: run number" >&2
   exit 10
@@ -50,9 +58,9 @@ get_spectrometer_angle() {
     echo "Missing argument: run_number" >&2
     exit 10
   fi
+  local image_dir=${work_dir}
   local url=https://userweb.jlab.org/~whit/hallc/spring17_angle_snaps
   local fname=COIN_SHMS_angle_$(printf "%05d" ${1}).jpg
-  local image_dir=$(mktemp -d)
   wget  ${url}/${fname} -O ${image_dir}/img0.jpg &> /dev/null
   convert ${image_dir}/img0.jpg ${image_dir}/img0.png 1> /dev/null
   echo "${image_dir}"
@@ -108,6 +116,15 @@ print_ocr_text() {
   cat ${output_dir}/${ocr_text_file}.txt
 }
 
+
+if [[ -z "${work_dir}" ]] 
+then
+  #echo "making temp work dir"
+  work_dir=$(mktemp -d)
+else
+  echo "making work dir"
+  mkdir -p $work_dir
+fi
 
 image_dir=$(get_spectrometer_angle ${run_number})
 #echo ${image_dir}
