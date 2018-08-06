@@ -11,6 +11,14 @@ Todo:
 5. Calculate lookup of [number+coordanate] -> precise angle
 
 
+## Progress
+
+This should print out 14
+```
+./get_spectrometer_angle -r 3566
+```
+
+
 
 
 
