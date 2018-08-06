@@ -1,0 +1,165 @@
+#!/bin/bash
+set -u
+
+run_number=3566
+
+print_the_help() {
+  echo "Usage: get_spectrometer_angle -r <run_number> "
+  echo "Options: "
+  echo "         -r,--run      Required run number"
+  echo "         -h,--help     print help"
+  exit 
+}
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+  key="$1"
+  case $key in
+    -h|--help)
+      shift # past argument
+      print_the_help
+      ;;
+    -r|--run)
+      run_number="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -a|--all)
+      #log_all_plots=1
+      shift # past argument
+      #shift # past value
+      ;;
+    *)    # unknown option
+      #POSITIONAL+=("$1") # save it in an array for later
+      echo "unknown option $1"
+      print_the_help
+      shift # past argument
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+#if [[ -n "${log_all_plots}" ]] ; then
+#  online_only=
+#fi
+
+if [[ -z "${run_number}" ]] ; then
+  echo "Missing argument: run number" >&2
+  exit 10
+fi
+
+get_spectrometer_angle() { 
+  if [[ -z "${1}" ]] ; then
+    echo "Missing argument: run_number" >&2
+    exit 10
+  fi
+  local url=https://userweb.jlab.org/~whit/hallc/spring17_angle_snaps
+  local fname=COIN_SHMS_angle_$(printf "%05d" ${1}).jpg
+  local image_dir=$(mktemp -d)
+  wget  ${url}/${fname} -O ${image_dir}/img0.jpg &> /dev/null
+  convert ${image_dir}/img0.jpg ${image_dir}/img0.png 1> /dev/null
+  echo "${image_dir}"
+}
+
+process_base_image() {
+  if [[ ! -f "${1}/img0.png" ]] ; then
+    echo "Missing file: ${1}/img0.png" >&2
+    exit 10
+  fi
+  convert -edge .15 -colorspace gray -normalize -colors 8 \
+    -normalize -negate -gaussian-blur .5  \
+    -append -morphology Erode Disk:2.0 -gaussian-blur 1 -normalize \
+    -append -blur 2 -colors 6 -normalize \
+    -append -threshold 40 \
+    ${1}/img0.png ${1}/img1.png
+  }
+
+crop_angle_number() {
+  local input_image=img1.png
+  local output_image=img2.png
+  if [[ ! -f "${1}/${input_image}" ]] ; then
+    echo "Missing file: ${1}/${input_image}" >&2
+    exit 10
+  fi
+  convert -crop 700x100+20+10 ${1}/${input_image} ${1}/${output_image}
+  convert -crop 120x100+300+10 ${1}/${input_image} ${1}/test2.png
+  convert -resize 700x1\! -normalize ${1}/${output_image} ${1}/test.png
+  convert ${1}/test.png derp.txt
+}
+
+print_ocr_text() {
+  local ocr_text_file=out
+  local input_image=img2.png
+  if [[ ! -f "${1}/${input_image}" ]] ; then
+    echo "Missing file: ${1}/${input_image}" >&2
+    exit 10
+  fi
+  tesseract ${1}/${input_image} ${1}/test2.png digits
+  cat ${1}/${ocr_text_file}.txt
+}
+
+
+image_dir=$(get_spectrometer_angle ${run_number})
+echo ${image_dir}
+
+process_base_image ${image_dir}
+
+crop_angle_number ${image_dir}
+
+print_ocr_text ${image_dir}
+
+identify ${image_dir}/img1.png
+
+cd ${image_dir} && thunar
+
+exit
+
+convert -edge .15 -colorspace gray -normalize -colors 8 \
+  -normalize -negate -gaussian-blur .5 COIN_SHMS_angle_03566.jpg derp30.png 
+convert -morphology Erode Disk:2.0 -gaussian-blur 1 -normalize \
+  derp30.png derp31.png
+convert -colors 8 -normalize \
+  -append -gaussian-blur 1.0 -colors 2  -normalize\
+  -append -blur 2 -colors 6 -normalize \
+  -append -threshold 40 \
+  derp31.png derp32.png
+
+convert \
+  -append -blur 3 -colors 10 +dither -normalize \
+  -append -colors 6 -normalize -threshold 40 \
+  -append -morphology Erode Rectangle:2x6  \
+  -append -colors 6 -gaussian-blur 3 -normalize \
+  derp30.png derp37.png
+#  -append -colors 9 -gaussian-blur 2.0 -normalize 
+convert -crop 100x100+300+10 derp32.png derp33.png
+tesseract  derp33.png out digits
+echo " derp33.png OCR: "
+cat out.txt
+
+convert -crop 100x100+300+10 derp37.png derp38.png
+tesseract  derp38.png out digits
+echo " derp38.png OCR: "
+cat out.txt
+
+convert  -edge .35 -colorspace gray -colors 4 -normalize -negate -gaussian-blur .5 COIN_SHMS_angle_03692.jpg derp40.jpg 
+convert  -colors 6 COIN_SHMS_angle_03692.jpg derp41.png 
+convert derp41.png -fill green -draw 'color 230,85 replace' derp42.png
+convert  -edge .35 -colorspace gray -colors 4 -normalize -negate -gaussian-blur .5 derp42.png derp43.png 
+
+# HMS angle
+convert -edge .20 -colorspace gray -colors 4 -normalize \
+  -normalize -negate -gaussian-blur 0.5 COIN_HMS_angle_03566.jpg derp50.png 
+convert -morphology Erode Disk:1.5 -gaussian-blur 1 -normalize \
+  derp50.png derp51.png
+convert -colors 8 -normalize \
+  -append -gaussian-blur 1.0 -colors 2  -normalize\
+  -append -blur 2 -colors 6 -normalize \
+  -append -threshold 40 \
+  derp51.png derp52.png
+convert -crop 150x100+300+110 derp52.png derp53.png
+tesseract  derp53.png out digits
+cat out.txt
+
+
+
