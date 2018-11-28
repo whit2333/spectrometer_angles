@@ -15,7 +15,8 @@ Todo:
 
 This should print out 14
 ```
-./get_spectrometer_angle -r 3293  -d test
+./get_spectrometer_angle -r 3566  -d test  # should print 14
+./get_spectrometer_angle -r 3293  -d test  # doesn't work yet
 ```
 
 
