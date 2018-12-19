@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# See 
+# http://www.imagemagick.org/Usage/compare/#difference
+# todo : automaticall crop out 
+
+#mkdir -p test_images
+#wget https://userweb.jlab.org/~whit/hallc/spring17_angle_snaps/SHMS_angle_03604.jpg -O test_images/angle_test1.jpg
+#wget https://userweb.jlab.org/~whit/hallc/spring17_angle_snaps/SHMS_angle_03605.jpg -O test_images/angle_test2.jpg
+#wget https://userweb.jlab.org/~whit/hallc/spring17_angle_snaps/SHMS_angle_03606.jpg -O test_images/angle_test3.jpg
+#wget https://userweb.jlab.org/~whit/hallc/spring17_angle_snaps/SHMS_angle_03131.jpg  -O test_images/angle_test4.jpg
+
+mkdir -p test_results
+
+# produces detailed difference
+composite \
+  test_images/angle_test1.jpg \
+  test_images/angle_test2.jpg \
+  -compose difference  test_results/difference_1_2.png
+
+composite \
+  test_images/angle_test1_offset.jpg \
+  test_images/angle_test2.jpg \
+  -compose difference  test_results/difference_1_offset_2.png
+
+composite \
+  test_images/angle_test2.jpg \
+  test_images/angle_test3.jpg \
+  -compose difference  test_results/difference_2_3.png
+
+composite \
+  test_images/angle_test2.jpg \
+  test_images/angle_test4.jpg \
+  -compose difference  test_results/difference_2_4.png
+
+convert \
+  test_images/angle_test1_offset.jpg \
+  test_images/angle_test2.jpg \
+  -compose difference -composite \
+  -threhold 0 -separate -evaluate-sequence Add \
+  test_results/compose_diff_threshold.png
+
+compare -metric AE -fuzz 5% \
+  test_images/angle_test1.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+  test_results/compare_1_2_fuzz_5.png
+
+compare -metric AE -fuzz 10% \
+  test_images/angle_test1.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+  test_results/compare_1_2_fuzz_10.png
+
+compare -metric AE -fuzz 15% \
+  test_images/angle_test1.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+  test_results/compare_1_2_fuzz_15.png
+
+compare -metric AE -fuzz 15% \
+  test_images/angle_test1_offset.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+  test_results/compare_1_offset_2_fuzz_15.png
+
+# chop off the bottom part of the image with the timestamp
+convert  test_results/difference_2_4.png -background black -gravity south -chop x40 \
+  test_results/difference_2_4_chopped.png
+
+convert  test_results/compare_1_offset_2_fuzz_15.png -background black -gravity south -chop x40 \
+  test_results/compare_1_offset_2_fuzz_15_chopped.png
+
