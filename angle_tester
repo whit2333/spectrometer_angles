@@ -37,32 +37,37 @@ convert \
   test_images/angle_test1_offset.jpg \
   test_images/angle_test2.jpg \
   -compose difference -composite \
-  -threhold 0 -separate -evaluate-sequence Add \
+  -threshold 0 -separate -evaluate-sequence Add \
   test_results/compose_diff_threshold.png
 
-compare -metric AE -fuzz 5% \
+compare -metric FUZZ -fuzz 5% \
   test_images/angle_test1.jpg \
   test_images/angle_test2.jpg \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_2_fuzz_5.png
+echo " "
 
-compare -metric AE -fuzz 10% \
+compare -metric FUZZ -fuzz 10% \
   test_images/angle_test1.jpg \
   test_images/angle_test2.jpg \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_2_fuzz_10.png
+echo " "
 
-compare -metric AE -fuzz 15% \
+compare -metric FUZZ -fuzz 15% \
   test_images/angle_test1.jpg \
   test_images/angle_test2.jpg \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_2_fuzz_15.png
+echo " "
+# metric FUZZ is a crude quantization
 
-compare -metric AE -fuzz 15% \
+compare -metric FUZZ -fuzz 15% \
   test_images/angle_test1_offset.jpg \
   test_images/angle_test2.jpg \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_offset_2_fuzz_15.png
+echo " "
 
 # chop off the bottom part of the image with the timestamp
 convert  test_results/difference_2_4.png -background black -gravity south -chop x40 \
@@ -71,3 +76,12 @@ convert  test_results/difference_2_4.png -background black -gravity south -chop 
 convert  test_results/compare_1_offset_2_fuzz_15.png -background black -gravity south -chop x40 \
   test_results/compare_1_offset_2_fuzz_15_chopped.png
 
+#convert test_results/compare_1_offset_2_fuzz_15_chopped.png -precision 15 -format %[fx:int(mean*w*h+0.5)] info:
+
+#j
+#jconvert test_results/compare_1_offset_2_fuzz_15_chopped.png  -format %[fx:int(mean*w*h+0.5)] info:
+#jidentify test_results/compare_1_offset_2_fuzz_15_chopped.png  -format %[fx:int(mean*w*h+0.5)] info:
+
+
+
+#-precision 15 -format %[fx:int(mean*w*h+0.5)] info:
