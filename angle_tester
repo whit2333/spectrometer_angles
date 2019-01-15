@@ -127,6 +127,7 @@ echo "MSE the difference with the same angle but one offset"
 echo " "
 mse2array=($mse2)
 echo "${mse2array[0]}"
+
 # chop off the bottom part of the image with the timestamp
 convert  test_results/difference_2_4.png -background black -gravity south -chop x40 \
   test_results/difference_2_4_chopped.png
