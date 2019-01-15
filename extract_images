@@ -44,6 +44,7 @@ function yes_or_no {
 
 RUNNUM=0
 POSITIONAL=()
+TO_PNG=
 
 while [[ $# -gt 0 ]]
 do
@@ -59,11 +60,10 @@ do
       shift # past argument
       shift # past value
       ;;
-    #-a|--all)
-    #  LOG_ALL_PLOTS=1
-    #  shift # past argument
-    #  #shift # past value
-    #  ;;
+    -p|--png)
+      TO_PNG=1
+      shift # past argument
+      ;;
     #-o|--online-only)
     #  ONLINE_ONLY=1
     #  shift # past argument
@@ -100,8 +100,9 @@ do
   aname=$(echo "${startbyte}" | cut -d " " -f 3)
   echo "${aname}"
   output_name_base=$(basename ${aname} .jpg)
-  output_file="${output_name_base}_${RUNNUM}.uu"
+  output_file="$(mktemp).uu"
   output_image="${output_name_base}_${RUNNUM}.jpg"
+  png_output_image="${output_name_base}_${RUNNUM}.png"
 
   #echo "${startbyte}" | cut -d ":" -f 2 > ${output_file}
   cat /dev/null > ${output_file}
@@ -160,75 +161,18 @@ do
   done
   echo "\`" >> ${output_file}
   echo "end" >> ${output_file}
+
   uudecode -o ${output_image} ${output_file}
 
-  #apart_end=$(head -c 20000000 "${inputfile}" \
-  #  | tail -c+${a_start_byte}   \
-    #  | grep --byte-offset --only-matching --text "end" \
-    #  | head -n 1  | cut -d ":" -f 1 | { expr $(cat) + ${a_start_byte} ; })
+  # convert to png file
+  if [[ ${TO_PNG} ]] ; then
+    convert ${output_image} ${png_output_image}
+    rm "${output_image}"
+  fi
 
-    #echo "${apart_end}"
-    #head -c 20000000 "${inputfile}" \
-    #  | tail -c +${a_start_byte}   \
-    #  | grep --byte-offset --only-matching --text "end" \
-    #  | head -n 1 | cut -d ":" -f 2
-
-
-    #part_starts+=(${a_start_byte})
-    ##part_stops+=(${apart_end})
-    #part_line_size+=(${a_line_size})
-
-
-  #echo "${#part_starts[@]}"
-  #n_parts=${#part_starts[@]}
-  #n_last=$((${n_parts} - 1))
-  #last_start=${part_starts[${n_last}]}
-
-  #apart_end=$(head -c 20000000 "${inputfile}" \
-  #  | tail -c+${last_start}   \
-  #  | grep --byte-offset --only-matching --text "^end" \
-  #  | head -n 1  | cut -d ":" -f 1 | { expr $(cat) + ${last_start} ; })
-
-  ## part_starts part_stops part_line_size
-  #for ((i=0;i+1<${#part_starts[@]};++i)); do
-  #  #  printf "%s to %s\n" "${part_starts[i]}" "${part_stops[i]}"
-  #  echo " part $i "
-  #  b1=${part_starts[i]}
-  #  b2=${part_starts[$((i + 1))]}
-  #  b3=$((${b2} - ${b1}))
-  #  dd status=none if="${inputfile}" ibs=1 skip=${b1} count=${b3}  | tail -n 5
-  #  echo ""
-  #done
-  #echo " part ${n_parts}"
-  #b3=$((${apart_end} - ${last_start}))
-  #  dd status=none if="${inputfile}" ibs=1 skip=${last_start} count=${b3}  | tail -n 5
-  #  echo ""
-  #first_start=${part_starts[0]}
-  #total_bytes=$((apart_end - first_start))
-
-  #dd status=none if="${inputfile}" ibs=1 skip=${first_start} count=$((${total_bytes} + 4)) \
-  #  > derp_${start0}.out  
-
-  #sed -i "/begin PART ${aname}.uu.[a-z][a-z]/d" derp_${start0}.out
-
-  #cat derp_${start0}.out |  uudecode -o derp_${start0}.jpg  
-
-  #echo "derp_${start0}.jpg"
-
-  #end0=$(head -c $((2 * 1000000)) "${inputfile}" 
-  #end0=$(head -c 2000000 "${inputfile}" 
-  #  | tail -c +${start0}   
-  #  | grep --byte-offset --only-matching --text "end" 
-  #  | head -n 1 | cut -d ":" -f 1 | { expr $(cat) + ${start0} ; })
-
-  #head -c 20000000 "${inputfile}" 
-  #  | head -c $((${end0} + 4)) 
-  #  | tail -c $((${end0} - ${start0} + 4))  
-
-  #cat derp_${start0}.out |  uudecode -o derp_${start0}.jpg  
+  rm "${output_file}"
 
   echo ""
-  #uudecode -o derp_${start0}.jpg
 done
 
 rm -f "${file_head}"
