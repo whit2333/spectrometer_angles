@@ -46,6 +46,9 @@ compare -metric FUZZ -fuzz 5% \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_2_fuzz_5.png
 echo " "
+echo " the number above is for two runs with the same angle "
+echo " "
+
 
 compare -metric FUZZ -fuzz 10% \
   test_images/angle_test1.jpg \
@@ -53,12 +56,16 @@ compare -metric FUZZ -fuzz 10% \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_2_fuzz_10.png
 echo " "
+echo " the number above is for two runs with the same angle "
+echo " "
 
 compare -metric FUZZ -fuzz 15% \
   test_images/angle_test1.jpg \
   test_images/angle_test2.jpg \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_2_fuzz_15.png
+echo " "
+echo " the number above is for two runs with the same angle "
 echo " "
 # metric FUZZ is a crude quantization
 
@@ -68,7 +75,58 @@ compare -metric FUZZ -fuzz 15% \
           -compose Src -highlight-color White -lowlight-color Black \
   test_results/compare_1_offset_2_fuzz_15.png
 echo " "
+echo "FUZZ the difference with the same angle but one offset"
+echo " "
 
+compare -metric AE -fuzz 15% \
+  test_images/angle_test1_offset.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+  test_results/compare_1_offset_2_fuzz_15.png
+echo " "
+echo "AE the difference with the same angle but one offset"
+echo " "
+
+compare -metric AE -fuzz 15% \
+  test_images/angle_test1.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+  test_results/compare_1_offset_2_fuzz_15.png
+echo " "
+echo "AE the difference with the same angle but one offset"
+echo " "
+
+
+compare -metric PAE -fuzz 15% \
+  test_images/angle_test1_offset.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+  test_results/compare_1_offset_2_fuzz_15.png
+echo " "
+echo "PAE the difference with the same angle but one offset"
+echo " "
+
+mse1=$(compare -metric MSE -fuzz 15% \
+  test_images/angle_test1_offset.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+          test_results/compare_1_offset_2_fuzz_15.png 2>&1 )
+echo " "
+echo " $mse1"
+echo "MSE the difference with the same angle but one offset"
+echo " "
+
+mse2=$(compare -metric MSE -fuzz 15% \
+  test_images/angle_test1.jpg \
+  test_images/angle_test2.jpg \
+          -compose Src -highlight-color White -lowlight-color Black \
+          test_results/compare_1_offset_2_fuzz_15.png 2>&1 )
+echo " "
+echo " $mse2"
+echo "MSE the difference with the same angle but one offset"
+echo " "
+mse2array=($mse2)
+echo "${mse2array[0]}"
 # chop off the bottom part of the image with the timestamp
 convert  test_results/difference_2_4.png -background black -gravity south -chop x40 \
   test_results/difference_2_4_chopped.png

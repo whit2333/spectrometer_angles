@@ -1,0 +1,235 @@
+#!/bin/bash
+set -o nounset
+set -o errexit
+
+#
+# Script by Whitney Armstrong <whit@jlab.org>
+#
+
+function print_the_help {
+  echo "USAGE: ${0} [-r] [-p] [-h] DAT-FILE"
+  echo "  "
+  echo "  DESCRIPTION:" 
+  echo "          ${0} extracts the spectrometer camers angles from the raw coda files."
+  echo "  "
+  echo "  ARGUMENTS: "
+  echo "          DAT-FILE           CODA file (e.g. raw/coin_all_01234.dat)"
+  echo "  OPTIONS: "
+  echo "          -r,--run <number>  Run Number (default:0) is currently only used for output file name."
+  #echo "          -y,--yes           Automatically submit log entries (does not prompt for y/n)"
+  echo "          -p,--png           Convert the output Output a png file instead"
+  echo "          -h,--help          Print this help"
+  echo "  "
+  echo "  "
+  echo " Please report bugs to Whitney Armstrong <whit@jlab.org>  "
+  echo "  "
+  exit 
+}
+
+function yes_or_no {
+  while true; do
+    read -p "$* [y/n]: " yn
+    case $yn in
+      [Yy]*) return 0 ;;
+      [Nn]*) echo "No entered" ; return 1 ;;
+    esac
+  done
+}
+
+#if [[ $# -eq 0 ]] ; then
+#  print_the_help
+#  exit 
+#fi
+
+
+RUNNUM=0
+POSITIONAL=()
+
+while [[ $# -gt 0 ]]
+do
+  key="$1"
+
+  case $key in
+    -h|--help)
+      shift # past argument
+      print_the_help
+      ;;
+    -r|--run)
+      RUNNUM="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    #-a|--all)
+    #  LOG_ALL_PLOTS=1
+    #  shift # past argument
+    #  #shift # past value
+    #  ;;
+    #-o|--online-only)
+    #  ONLINE_ONLY=1
+    #  shift # past argument
+    #  #shift # past value
+    #  ;;
+    *)    # unknown option
+      POSITIONAL+=("$1") # save it in an array for later
+      #echo "unknown option $1"
+      #print_the_help
+      shift # past argument
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+
+inputfile=$1
+
+#grep --byte-offset --text "begin [0-9][0-9]*" ${inputfile}
+#starts=$(grep --byte-offset --text "begin [0-9][0-9]*" ${inputfile})
+
+
+# Create temporary file with only the first 10000 lines (in xml format) 
+file_head=$(mktemp)
+evio2xml ${inputfile} | head -n 10000 > ${file_head}
+
+readarray -t xx < <(cat ${file_head} | grep --byte-offset --text "begin [0-9][0-9]*")
+#printf 'line: %s\n' "${xx[@]}"
+
+for startbyte in "${xx[@]}"
+do
+
+  # image file name 
+  aname=$(echo "${startbyte}" | cut -d " " -f 3)
+  echo "${aname}"
+  output_name_base=$(basename ${aname} .jpg)
+  output_file="${output_name_base}_${RUNNUM}.uu"
+  output_image="${output_name_base}_${RUNNUM}.jpg"
+
+  #echo "${startbyte}" | cut -d ":" -f 2 > ${output_file}
+  cat /dev/null > ${output_file}
+
+
+  # get array of all "begin PART"s 
+  readarray -t byte_starts < <(cat  ${file_head} | grep -n --only-matching --text "begin PART ${aname}.uu.[a-z][a-z]" )
+
+  n_starts=${#byte_starts[@]}
+  last_start=${byte_starts[$((n_starts - 1))]}
+
+  # get array of all the ends ""s 
+  readarray -t byte_stops < <(cat  ${file_head} | grep -n --only-matching --text "^\]\]>$" )
+
+  n_stops=${#byte_stops[@]}
+
+  echo "Starts: ${#byte_starts[@]}"
+  echo "Stops : ${#byte_stops[@]}"
+
+  stop_index_offset=0
+  for ((i=0;i<${n_stops};++i)); do
+    a_start_byte=$(echo "${byte_starts[0]}" | cut -d ":" -f 1)
+    b_start_byte=$(echo "${byte_starts[1]}" | cut -d ":" -f 1)
+    a_stop_byte=$(echo "${byte_stops[${i}]}" | cut -d ":" -f 1)
+    if (( (${a_start_byte} < ${a_stop_byte}) && (${b_start_byte} > ${a_stop_byte}) )) ; then
+      stop_index_offset=${i}
+      break;
+    fi
+  done
+
+  echo "offset: ${stop_index_offset}"
+
+  #part_stops=()
+  part_starts=()
+  part_line_size=()
+
+  for ((i=0; i< ${n_starts};++i)); do
+
+    ind="$((${i} + ${stop_index_offset}))"
+    echo "asdf: ${ind}"
+
+    apart_start=${byte_starts[${i}]}
+    apart_stop=${byte_stops[${ind}]}
+
+    a_start_byte=$(echo "${byte_starts[${i}]}" | cut -d ":" -f 1)
+    a_stop_byte=$(echo "${byte_stops[${ind}]}" | cut -d ":" -f 1)
+
+    echo "${apart_start}"
+    echo "${apart_stop}"
+
+    cat ${file_head} | head -n $((${a_stop_byte}-1)) | tail -n $((${a_stop_byte} - ${a_start_byte} - 1))  >> ${output_file}
+
+    #a_start_byte=$(echo "${apart_start}" | cut -d ":" -f 1)
+    #a_line=$(echo "${apart_start}" | cut -d ":" -f 2)
+    #a_line_size=${#a_line}
+  done
+  echo "\`" >> ${output_file}
+  echo "end" >> ${output_file}
+  uudecode -o ${output_image} ${output_file}
+
+  #apart_end=$(head -c 20000000 "${inputfile}" \
+  #  | tail -c+${a_start_byte}   \
+    #  | grep --byte-offset --only-matching --text "end" \
+    #  | head -n 1  | cut -d ":" -f 1 | { expr $(cat) + ${a_start_byte} ; })
+
+    #echo "${apart_end}"
+    #head -c 20000000 "${inputfile}" \
+    #  | tail -c +${a_start_byte}   \
+    #  | grep --byte-offset --only-matching --text "end" \
+    #  | head -n 1 | cut -d ":" -f 2
+
+
+    #part_starts+=(${a_start_byte})
+    ##part_stops+=(${apart_end})
+    #part_line_size+=(${a_line_size})
+
+
+  #echo "${#part_starts[@]}"
+  #n_parts=${#part_starts[@]}
+  #n_last=$((${n_parts} - 1))
+  #last_start=${part_starts[${n_last}]}
+
+  #apart_end=$(head -c 20000000 "${inputfile}" \
+  #  | tail -c+${last_start}   \
+  #  | grep --byte-offset --only-matching --text "^end" \
+  #  | head -n 1  | cut -d ":" -f 1 | { expr $(cat) + ${last_start} ; })
+
+  ## part_starts part_stops part_line_size
+  #for ((i=0;i+1<${#part_starts[@]};++i)); do
+  #  #  printf "%s to %s\n" "${part_starts[i]}" "${part_stops[i]}"
+  #  echo " part $i "
+  #  b1=${part_starts[i]}
+  #  b2=${part_starts[$((i + 1))]}
+  #  b3=$((${b2} - ${b1}))
+  #  dd status=none if="${inputfile}" ibs=1 skip=${b1} count=${b3}  | tail -n 5
+  #  echo ""
+  #done
+  #echo " part ${n_parts}"
+  #b3=$((${apart_end} - ${last_start}))
+  #  dd status=none if="${inputfile}" ibs=1 skip=${last_start} count=${b3}  | tail -n 5
+  #  echo ""
+  #first_start=${part_starts[0]}
+  #total_bytes=$((apart_end - first_start))
+
+  #dd status=none if="${inputfile}" ibs=1 skip=${first_start} count=$((${total_bytes} + 4)) \
+  #  > derp_${start0}.out  
+
+  #sed -i "/begin PART ${aname}.uu.[a-z][a-z]/d" derp_${start0}.out
+
+  #cat derp_${start0}.out |  uudecode -o derp_${start0}.jpg  
+
+  #echo "derp_${start0}.jpg"
+
+  #end0=$(head -c $((2 * 1000000)) "${inputfile}" 
+  #end0=$(head -c 2000000 "${inputfile}" 
+  #  | tail -c +${start0}   
+  #  | grep --byte-offset --only-matching --text "end" 
+  #  | head -n 1 | cut -d ":" -f 1 | { expr $(cat) + ${start0} ; })
+
+  #head -c 20000000 "${inputfile}" 
+  #  | head -c $((${end0} + 4)) 
+  #  | tail -c $((${end0} - ${start0} + 4))  
+
+  #cat derp_${start0}.out |  uudecode -o derp_${start0}.jpg  
+
+  echo ""
+  #uudecode -o derp_${start0}.jpg
+done
+
+rm -f "${file_head}"
+
