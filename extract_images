@@ -79,6 +79,9 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
+command -v convert >/dev/null 2>&1 || { echo >&2 "'convert' is missing. Install imagemagik. Aborting."; exit 1; }
+command -v evio2xml >/dev/null 2>&1 || { echo >&2 "'evio2xml' is missing. Install evio. Aborting."; exit 1; }
+command -v uudecode >/dev/null 2>&1 || { echo >&2 "'uudecode' is missing. Install sharutils package. Aborting."; exit 1; }
 
 inputfile=$1
 
