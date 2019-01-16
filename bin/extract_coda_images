@@ -1,6 +1,7 @@
 #!/bin/bash
 set -o nounset
 set -o errexit
+#set -o pipefail  
 
 #
 # Script by Whitney Armstrong <whit@jlab.org>
@@ -19,6 +20,7 @@ function print_the_help {
   echo "          -t,--tag <tag>     File tag is appended to the output file name : shms_angle_0_<tag>.jpg"
   #echo "          -y,--yes           Automatically submit log entries (does not prompt for y/n)"
   echo "          -p,--png           Convert the output Output a png file instead"
+  echo "          -d,--debug         Debug printing"
   echo "          -h,--help          Print this help"
   echo "  "
   echo "  "
@@ -42,7 +44,7 @@ if [[ $# -eq 0 ]] ; then
   exit 
 fi
 
-
+DEBUG=
 TAG=
 RUNNUM=0
 POSITIONAL=()
@@ -56,6 +58,10 @@ do
     -h|--help)
       shift # past argument
       print_the_help
+      ;;
+    -d|--debug)
+      shift # past argument
+      DEBUG=1
       ;;
     -r|--run)
       RUNNUM="$2"
@@ -87,7 +93,9 @@ inputfile=$1
 
 # Create temporary file with only the first 10000 lines (in xml format) 
 file_head=$(mktemp)
-evio2xml ${inputfile} | head -n 10000 > ${file_head}
+evio2xml ${inputfile} | head -n 1000000 > ${file_head}
+
+echo "${file_head}"
 
 readarray -t xx < <(cat ${file_head} | grep --byte-offset --text "begin [0-9][0-9]*")
 #printf 'line: %s\n' "${xx[@]}"
@@ -110,8 +118,8 @@ do
     png_output_image="${output_name_base}_${RUNNUM}_${TAG}.png"
   fi 
 
-  #echo "${startbyte}" | cut -d ":" -f 2 > ${output_file}
   cat /dev/null > ${output_file}
+  echo "${startbyte}" | cut -d ":" -f 2 > ${output_file}
 
   # get array of all "begin PART"s 
   readarray -t byte_starts < <(cat  ${file_head} | grep -n --only-matching --text "begin PART ${aname}.uu.[a-z][a-z]" )
@@ -132,10 +140,12 @@ do
     a_start_byte=$(echo "${byte_starts[0]}" | cut -d ":" -f 1)
     b_start_byte=$(echo "${byte_starts[1]}" | cut -d ":" -f 1)
     a_stop_byte=$(echo "${byte_stops[${i}]}" | cut -d ":" -f 1)
+
     if (( (${a_start_byte} < ${a_stop_byte}) && (${b_start_byte} > ${a_stop_byte}) )) ; then
       stop_index_offset=${i}
       break;
     fi
+# grep -n --only-matching --text "^\]\]>$"
   done
   #echo "offset: ${stop_index_offset}"
 
@@ -143,22 +153,74 @@ do
 
     ind="$((${i} + ${stop_index_offset}))"
 
-    apart_start=${byte_starts[${i}]}
-    apart_stop=${byte_stops[${ind}]}
+    #apart_start=${byte_starts[${i}]}
+    #apart_stop=${byte_stops[${ind}]}
 
     a_start_byte=$(echo "${byte_starts[${i}]}" | cut -d ":" -f 1)
     a_stop_byte=$(echo "${byte_stops[${ind}]}" | cut -d ":" -f 1)
 
-    #echo "${apart_start}"
-    #echo "${apart_stop}"
+    if (( ${a_start_byte} > ${a_stop_byte} )) ;
+    then
 
-    cat ${file_head} | head -n $((${a_stop_byte}-1)) | tail -n $((${a_stop_byte} - ${a_start_byte} - 1))  >> ${output_file}
+      if [[ -n "${DEBUG}" ]] ; then
+        echo "bad : ${a_start_byte} - ${a_stop_byte}"
+      fi
+    #while (( (${a_start_byte} < ${a_stop_byte}) && (${b_start_byte} > ${a_stop_byte}) )) ;
+    #if (( !(${a_start_byte} < ${a_stop_byte} && ${b_start_byte} > ${a_stop_byte}) )) ;
+    #then
+      stop_index_offset=$(( ${stop_index_offset} + 1 ))
+      ind=$((${i} + ${stop_index_offset}))
+      #apart_stop=${byte_stops[${ind}]}
+      a_stop_byte=$(echo "${byte_stops[${ind}]}" | cut -d ":" -f 1)
+    fi
 
+    if [[ -n "${DEBUG}" ]] ; then
+      echo "${a_start_byte} - ${a_stop_byte}"
+    fi
+
+    # Printing out the uuencoded file parts.
+    # Note the extra sed stuff is needed to clean up the part because 
+    # sometimes the epics variables printing overlaps or is concatenated with
+    # the uuencoded file part. 
+    # This is either (1) a bug when the file is being injected by coda (or some script) 
+    # into the raw output file, or (2) a bug in evio2xml where the end of CDATA block is
+    # not seen.  \TODO fix and/or report his bug!
+    # 
+    cat ${file_head} \
+      | head -n $((${a_stop_byte} - 1)) \
+      | tail -n $((${a_stop_byte} - ${a_start_byte} - 1))  \
+      | sed  '/^.\{1,56\}$/p ; /^\(M\)/!d' \
+      | sed '/[ \t]/d' \
+      >> ${output_file}
+
+
+    if [[ -n "${DEBUG}" ]] ; then
+      echo " --------- "
+      cat ${file_head} \
+        | head -n $((${a_stop_byte} - 1)) \
+        | tail -n $((${a_stop_byte} - ${a_start_byte} )) \
+        | sed  '/^.\{1,56\}$/p ; /^\(M\)/!d' \
+        | sed '/[ \t]/d' \
+        | head -n 4 
+
+      echo " ......... "
+      cat ${file_head} \
+        | head -n $((${a_stop_byte})) \
+        | tail -n $((${a_stop_byte} - ${a_start_byte} )) \
+        | sed  '/^.\{1,56\}$/p ; /^\(M\)/!d' \
+        | sed '/[ \t]/d' \
+        | tail -n 4 
+
+    fi
   done
   echo "\`" >> ${output_file}
   echo "end" >> ${output_file}
 
   uudecode -o ${output_image} ${output_file}
+
+  if [[ -n "${DEBUG}" ]] ; then
+    echo "${output_image}"
+  fi
 
   # convert to png file
   if [[ ${TO_PNG} ]] ; then
@@ -168,11 +230,18 @@ do
     cp ${output_image} ${jpg_output_image}
     echo "${jpg_output_image}"
   fi
-
   rm "${output_image}"
-  rm "${output_file}"
 
+  if [[ -n "${DEBUG}" ]] ; then
+    echo "${file_head}"
+  else 
+    rm "${output_file}"
+  fi
 done
 
-rm -f "${file_head}"
+if [[ -n "${DEBUG}" ]] ; then
+  echo "${file_head}"
+else 
+  rm -f "${file_head}"
+fi
 

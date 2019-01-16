@@ -62,6 +62,8 @@ convert ${tmp3} \
   \( -colorspace gray -colors 3 \) \
   ${tmp4}
 
+display ${tmp4}
+
 ncols=$(convert ${tmp4} -colorspace gray -colors 3 -format %c histogram:info:- \
   | sed 's/:.*#/ #/' \
   | wc -l)
@@ -79,6 +81,9 @@ if (( ${ncols} > 2 )) ; then
 else 
   echo "0"
 fi
+
+rm "${tmp3}"
+rm "${tmp4}"
 
 #echo "asdf"
 
