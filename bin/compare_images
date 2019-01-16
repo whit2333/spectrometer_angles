@@ -1,0 +1,101 @@
+#!/bin/bash
+set -o nounset
+#set -o errexit
+
+image1=$1
+image2=$2
+
+output=tester.png
+
+#compare -metric MSE -fuzz 15% \
+#  ${image1} \
+#  ${image2} \
+#  -compose Src -highlight-color White -lowlight-color Black \
+#  ${output} 
+
+#echo ${image1}
+#echo ${image2}
+
+if [[ ! -e ${image1} ]] ; then
+  echo "${image1} does not exist"
+  exit 1
+fi
+
+if [[ ! -e ${image2} ]] ; then
+  echo "${image2} does not exist"
+  exit 1
+fi
+
+
+tmp1="$(mktemp).png"
+tmp2="$(mktemp).png"
+
+convert ${image1} \
+   -colorspace gray -colors 17 -negate -gaussian-blur 1.0 \
+    \( -background black -gravity south -chop x240 \) \
+    \( -morphology Erode Rectangle:1x5 -gaussian-blur 3.0 \)  \
+    \( -colorspace gray -colors 8 -gaussian-blur 2 -normalize \) \
+  ${tmp1}
+convert ${image2} \
+   -colorspace gray -colors 17 -negate -gaussian-blur 1.0 \
+    \( -background black -gravity south -chop x240 \) \
+    \( -morphology Erode Rectangle:1x5 -gaussian-blur 3.0 \)  \
+    \( -colorspace gray -colors 8 -gaussian-blur 2 -normalize \) \
+  ${tmp2}
+
+#display ${tmp1}
+#display ${tmp2}
+
+composite ${tmp1} ${tmp2} \
+  -compose difference   \
+  difference0.png
+
+#display difference0.png
+
+convert difference0.png \
+  -colorspace gray -colors 8 -morphology Dilate Disk:3.0 -gaussian-blur 5.2 \
+  \( -separate -threshold 50% -combine \) \
+  \( -colorspace gray -colors 3 \) \
+  difference.png
+
+ncols=$(convert difference.png -colorspace gray -colors 3 -format %c histogram:info:- \
+  | sed 's/:.*#/ #/' \
+  | wc -l)
+
+npixels=$(convert difference.png -colorspace gray -colors 3 -format %c histogram:info:- \
+  | sed 's/:.*#/ #/' \
+  | tail -n 1 \
+  | while read aline ;
+do
+  echo "$aline" | cut -d " " -f 1
+done )
+
+if (( ${ncols} > 2 )) ; then
+  echo "${npixels}"
+else 
+  echo "0"
+fi
+
+#echo "asdf"
+
+#  \( -colorspace gray -colors 5  \) \
+#  -colorspace gray -colors 4 -gaussian-blur .1 -negate
+
+#display difference.png
+
+#convert  difference.png  -colorspace gray -scale 1x1\!  txt:-
+
+#convert difference.png -resize 1x1\! \
+#    -format "%[fx:int(255*r+.5)],%[fx:int(255*g+.5)],%[fx:int(255*b+.5)]" info:-
+#
+##compare -metric RMSE ${image1} ${image2} NULL:
+#result=$(compare -metric PSNR -fuzz 3% ${tmp1} ${tmp2} NULL: 2>&1 )
+#
+#echo "${result}"
+#mse2array=(${result})
+#
+#echo "${mse2array[0]}"
+##echo ""
+#rm "${tmp1}"
+#rm "${tmp2}"
+
