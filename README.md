@@ -49,11 +49,6 @@ slight shifted to the left. This emulates a small shift in the rotation after
 initial angle setting.
 
 
-```
-./bin/compare_images test_images/angle_test1.jpg test_images/angle_test2.jpg -d
-4231
-```
-
 step-1a:
 
 ![test12_step1](test_images/test_1-2/test1.png)
@@ -70,6 +65,12 @@ step-3: re-process the difference
 
 ![test12_step2](test_images/test_1-2/test4.png)
 
+```
+./bin/compare_images test_images/angle_test1.jpg test_images/angle_test2.jpg -d
+4231
+```
+Note that a non-zero values indicate significant differences. This value is  is 
+a count of the number of blueish pixels.
 
 #### Test 2
 
@@ -80,12 +81,6 @@ step-3: re-process the difference
 The second image is the exact same setting just at a different time.  
 Comparison should yield no differences.
 
-Note the non-zero values indicate significant differences. 
-
-```
-./bin/compare_images test_images/angle_test1.jpg test_images/angle_test3.jpg
-0
-```
 
 step-1a:
 
@@ -103,6 +98,14 @@ step-3: re-process the difference
 
 ![test13_step2](test_images/test_1-3/test4.png)
 
+```
+./bin/compare_images test_images/angle_test1.jpg test_images/angle_test3.jpg
+0
+```
+
+Note that a non-zero values indicate significant differences. This value is  is 
+a count of the number of blueish pixels.
+
 #### Test 3
 
 ![t1](test_images/angle_test1.jpg)
@@ -110,11 +113,6 @@ step-3: re-process the difference
 ![t2](test_images/angle_test4.jpg)
 
 The second image is a very different setting. Let see what happens
-
-```
-./bin/compare_images test_images/angle_test1.jpg test_images/angle_test4.jpg
-10815
-```
 
 step-1a:
 
@@ -132,10 +130,18 @@ step-3: re-process the difference
 
 ![test14_step2](test_images/test_1-4/test4.png)
 
+```
+./bin/compare_images test_images/angle_test1.jpg test_images/angle_test4.jpg
+10815
+```
 
 There is a lot of the blue color as measured by the return value.
-
 The returned value is a count of the number of blueish pixels.
+
+**Todo**: 
+
+- Add more tests and examples.
+- Add test with HMS images
 
 
 ##  Ideas
