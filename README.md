@@ -41,6 +41,13 @@ Test images:
 ```
 ./bin/compare_images test_images/angle_test1.jpg test_images/angle_test2.jpg
 4231
+```
+
+step-1: [test12_step1](test_images/test_1-2/test1.png)
+step-1: [test12_step2](test_images/test_1-2/test2.png)
+
+
+```
 ./bin/compare_images test_images/angle_test1.jpg test_images/angle_test3.jpg
 0
 ./bin/compare_images test_images/angle_test1.jpg test_images/angle_test4.jpg

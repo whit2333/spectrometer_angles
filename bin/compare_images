@@ -104,6 +104,8 @@ convert ${image2} \
 if [[ -n "${DEBUG}" ]] ; then
   display ${tmp1}
   display ${tmp2}
+  cp ${tmp1} test1.png
+  cp ${tmp2} test2.png
 fi
 tmp3="$(mktemp).png"
 tmp4="$(mktemp).png"
@@ -116,6 +118,7 @@ rm "${tmp1}"
 rm "${tmp2}"
 if [[ -n "${DEBUG}" ]] ; then
   display ${tmp3}
+  cp ${tmp3} test3.png
 fi
 
 convert ${tmp3} \
@@ -126,6 +129,7 @@ convert ${tmp3} \
 
 if [[ -n "${DEBUG}" ]] ; then
   display ${tmp4}
+  cp ${tmp4} test4.png
 fi
 
 ncols=$(convert ${tmp4} -colorspace gray -colors 3 -format %c histogram:info:- \
