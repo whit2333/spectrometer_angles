@@ -45,24 +45,28 @@ convert ${image2} \
 
 #display ${tmp1}
 #display ${tmp2}
+tmp3="$(mktemp).png"
+tmp4="$(mktemp).png"
 
 composite ${tmp1} ${tmp2} \
   -compose difference   \
-  difference0.png
+  ${tmp3}
 
+rm "${tmp1}"
+rm "${tmp2}"
 #display difference0.png
 
-convert difference0.png \
+convert ${tmp3} \
   -colorspace gray -colors 8 -morphology Dilate Disk:3.0 -gaussian-blur 5.2 \
   \( -separate -threshold 50% -combine \) \
   \( -colorspace gray -colors 3 \) \
-  difference.png
+  ${tmp4}
 
-ncols=$(convert difference.png -colorspace gray -colors 3 -format %c histogram:info:- \
+ncols=$(convert ${tmp4} -colorspace gray -colors 3 -format %c histogram:info:- \
   | sed 's/:.*#/ #/' \
   | wc -l)
 
-npixels=$(convert difference.png -colorspace gray -colors 3 -format %c histogram:info:- \
+npixels=$(convert ${tmp4} -colorspace gray -colors 3 -format %c histogram:info:- \
   | sed 's/:.*#/ #/' \
   | tail -n 1 \
   | while read aline ;
@@ -96,6 +100,4 @@ fi
 #
 #echo "${mse2array[0]}"
 ##echo ""
-#rm "${tmp1}"
-#rm "${tmp2}"
 
