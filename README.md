@@ -43,8 +43,8 @@ Test images:
 4231
 ```
 
-step-1: [test12_step1](test_images/test_1-2/test1.png)
-step-1: [test12_step2](test_images/test_1-2/test2.png)
+step-1: ![test12_step1](test_images/test_1-2/test1.png)
+step-1: ![test12_step2](test_images/test_1-2/test2.png)
 
 
 ```
