@@ -2,10 +2,64 @@
 set -o nounset
 #set -o errexit
 
+
+#
+# Script by Whitney Armstrong <whit@jlab.org>
+#
+
+function print_the_help {
+  echo "USAGE: ${0} [-d] [-h] img1 img2"
+  echo "  "
+  echo "  DESCRIPTION:" 
+  echo "          ${0} compares two images for differences."
+  echo "          Returns 0 if the images are effectively the same."
+  echo "  "
+  echo "  ARGUMENTS: "
+  echo "          img1,img2          Spectrometer angle images to compare"
+  echo "  OPTIONS: "
+  echo "          -d,--debug         Debug printing"
+  echo "          -h,--help          Print this help"
+  echo "  "
+  echo "  "
+  echo " Please report bugs to Whitney Armstrong <whit@jlab.org>  "
+  echo "  "
+  exit 
+}
+
+DEBUG=
+POSITIONAL=()
+
+while [[ $# -gt 0 ]]
+do
+  key="$1"
+
+  case $key in
+    -h|--help)
+      shift # past argument
+      print_the_help
+      ;;
+    -d|--debug)
+      shift # past argument
+      DEBUG=1
+      ;;
+    #-t|--tag)
+    #  TAG="$2"
+    #  shift # past argument
+    #  shift # past value
+    #  ;;
+    *)    # unknown option
+      POSITIONAL+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+command -v convert >/dev/null 2>&1 || { echo >&2 "'convert' is missing. Install imagemagik. Aborting."; exit 1; }
+
 image1=$1
 image2=$2
 
-output=tester.png
 
 #compare -metric MSE -fuzz 15% \
 #  ${image1} \
@@ -29,6 +83,10 @@ fi
 
 tmp1="$(mktemp).png"
 tmp2="$(mktemp).png"
+if [[ -n "${DEBUG}" ]] ; then
+  echo "tmp1  ${tmp1}"
+  echo "tmp2  ${tmp2}"
+fi
 
 convert ${image1} \
    -colorspace gray -colors 17 -negate -gaussian-blur 1.0 \
@@ -43,8 +101,10 @@ convert ${image2} \
     \( -colorspace gray -colors 8 -gaussian-blur 2 -normalize \) \
   ${tmp2}
 
-#display ${tmp1}
-#display ${tmp2}
+if [[ -n "${DEBUG}" ]] ; then
+  display ${tmp1}
+  display ${tmp2}
+fi
 tmp3="$(mktemp).png"
 tmp4="$(mktemp).png"
 
@@ -54,7 +114,9 @@ composite ${tmp1} ${tmp2} \
 
 rm "${tmp1}"
 rm "${tmp2}"
-#display difference0.png
+if [[ -n "${DEBUG}" ]] ; then
+  display ${tmp3}
+fi
 
 convert ${tmp3} \
   -colorspace gray -colors 8 -morphology Dilate Disk:3.0 -gaussian-blur 5.2 \
@@ -62,7 +124,9 @@ convert ${tmp3} \
   \( -colorspace gray -colors 3 \) \
   ${tmp4}
 
-display ${tmp4}
+if [[ -n "${DEBUG}" ]] ; then
+  display ${tmp4}
+fi
 
 ncols=$(convert ${tmp4} -colorspace gray -colors 3 -format %c histogram:info:- \
   | sed 's/:.*#/ #/' \

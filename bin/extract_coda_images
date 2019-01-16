@@ -95,9 +95,11 @@ inputfile=$1
 file_head=$(mktemp)
 evio2xml ${inputfile} | head -n 1000000 > ${file_head}
 
-echo "${file_head}"
+if [[ -n "${DEBUG}" ]] ; then
+  echo "${file_head}"
+fi
 
-readarray -t xx < <(cat ${file_head} | grep --byte-offset --text "begin [0-9][0-9]*")
+readarray -t xx < <(grep --byte-offset --text "begin [0-9][0-9]*" ${file_head} )
 #printf 'line: %s\n' "${xx[@]}"
 
 for startbyte in "${xx[@]}"
@@ -122,13 +124,13 @@ do
   echo "${startbyte}" | cut -d ":" -f 2 > ${output_file}
 
   # get array of all "begin PART"s 
-  readarray -t byte_starts < <(cat  ${file_head} | grep -n --only-matching --text "begin PART ${aname}.uu.[a-z][a-z]" )
+  readarray -t byte_starts < <(grep -n --only-matching --text "begin PART ${aname}.uu.[a-z][a-z]" ${file_head} )
 
   n_starts=${#byte_starts[@]}
   last_start=${byte_starts[$((n_starts - 1))]}
 
   # get array of all the ends ""s 
-  readarray -t byte_stops < <(cat  ${file_head} | grep -n --only-matching --text "^\]\]>$" )
+  readarray -t byte_stops < <(grep -n --only-matching --text "^\]\]>$" ${file_head} )
 
   n_stops=${#byte_stops[@]}
 
@@ -186,8 +188,7 @@ do
     # into the raw output file, or (2) a bug in evio2xml where the end of CDATA block is
     # not seen.  \TODO fix and/or report his bug!
     # 
-    cat ${file_head} \
-      | head -n $((${a_stop_byte} - 1)) \
+      head -n $((${a_stop_byte} - 1)) ${file_head} \
       | tail -n $((${a_stop_byte} - ${a_start_byte} - 1))  \
       | sed  '/^.\{1,56\}$/p ; /^\(M\)/!d' \
       | sed '/[ \t]/d' \
@@ -196,16 +197,14 @@ do
 
     if [[ -n "${DEBUG}" ]] ; then
       echo " --------- "
-      cat ${file_head} \
-        | head -n $((${a_stop_byte} - 1)) \
+        head -n $((${a_stop_byte} - 1)) ${file_head} \
         | tail -n $((${a_stop_byte} - ${a_start_byte} )) \
         | sed  '/^.\{1,56\}$/p ; /^\(M\)/!d' \
         | sed '/[ \t]/d' \
         | head -n 4 
 
       echo " ......... "
-      cat ${file_head} \
-        | head -n $((${a_stop_byte})) \
+        head -n $((${a_stop_byte})) ${file_head} \
         | tail -n $((${a_stop_byte} - ${a_start_byte} )) \
         | sed  '/^.\{1,56\}$/p ; /^\(M\)/!d' \
         | sed '/[ \t]/d' \
