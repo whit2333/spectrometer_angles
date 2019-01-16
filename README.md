@@ -53,11 +53,11 @@ step-1b:
 
 step-2: take a difference
 
-![test12_step1](test_images/test_1-2/test1.png)
+![test12_step1](test_images/test_1-2/test3.png)
 
 step-3: re-process the difference 
 
-![test12_step2](test_images/test_1-2/test2.png)
+![test12_step2](test_images/test_1-2/test4.png)
 
 
 ```
