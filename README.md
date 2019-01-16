@@ -38,8 +38,14 @@ Test images:
 * `test_images/angle_test3.jpg` Different run  but same SHMS angle
 * `test_images/angle_test4.jpg` Very different SHMS angle setting angle
 
+#### Test 1
+
+![t1](test_images/angle_test1.jpg)
+
+![t2](test_images/angle_test2.jpg)
+
 ```
-./bin/compare_images test_images/angle_test1.jpg test_images/angle_test2.jpg
+./bin/compare_images test_images/angle_test1.jpg test_images/angle_test2.jpg -d
 4231
 ```
 
