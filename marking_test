@@ -1,0 +1,192 @@
+#!/bin/bash
+
+image_half_width=384
+shms_pixels_per_tick=15.55
+shms_pixels_per_floortick=14.7
+
+# returns the correction for non linearity of camera as function of x pixel
+# it is the deviation from the central slope at x=384 of shms_pixels_per_floortick
+shms_image_delta_x() {
+  local x="$((${1}-${image_half_width})).0"
+  wcalc -q "-1.0*(-0.0000519654 *${x}^2 + 2.79974*10^-7 *${x}^3 + 5.73977*10^-10 *${x}^4 + 2.51407*10^-13 *${x}^5)"
+  #wcalc -q "-1.0*(-0.00166777*${x} + 0.0000205719* ${x}^2  + 3.07043*10.0^(-7) *${x}^3)"
+  #wcalc -q "-1.0*(-0.131486 - 0.00217296* ${x} + 4.13154*10^-6* ${x}^2 + 3.16506*10^-7*${x}^3 + 1.74215*10^-10* ${x}^4)"
+  #wcalc -q  "-1.0*(2.95652*10.0^(-7) * ${x}^3 + 1.95329*10.0^(-10.0)* ${x}^4)"
+  #wcalc -q  "-1.0*(5.29707*10.0^(-7.0) *${x}^2 + 2.95567*10.0^(-7) *${x}^3 + 1.90582*10.0^(-10) *${x}^4)"
+}
+shms_correct_to_linear() {
+  wcalc -q  "${1} - $(shms_image_delta_x ${1})"
+}
+shms_correct_to_nonlinear() {
+  offset=$(shms_correct_to_linear 0)
+  local lin_x=$(wcalc -q "${1} - ${image_half_width} - ${offset}")
+  #res=$(wcalc -q "-1.0*(-0.46011 - 0.00123011*${lin_x} + 0.0000253145 *${lin_x}^2 + 2.79027*10.0^-7 *${lin_x}^3)")
+  res=$(wcalc -q "-1.0*(-0.139471 - 0.000438395 *${lin_x} - 0.0000363715 *${lin_x}^2 + 2.98428*10^-7 *${lin_x}^3 + 3.89293*10^-10 *${lin_x}^4 - 1.51772*10^-13 *${lin_x}^5)")
+  wcalc -q  "${1} + ${res} "
+} 
+shms_correct_to_linear 0
+shms_correct_to_linear ${image_half_width}
+
+# Return the nominal floor linear scale calibrated at the center of the image
+# floor_major is the pixel of the most central big tick that is used for computing distances.
+# itick is the number of the 1/10 big tick  steps  from the major reference.
+floor_pixel(){
+  local fl_maj=$1
+  local i_tick=$2
+  #echo ${itick}
+  #echo ${floor_major}
+  local ref_pixel=$(shms_correct_to_linear ${fl_maj} )
+  local linear_pixel=$(wcalc -q "floor(${ref_pixel} + ${i_tick}*${shms_pixels_per_floortick})")
+  shms_correct_to_nonlinear ${linear_pixel}
+}
+
+
+#shms_image_delta_x 700.0
+
+search_img=catalog/SHMS_14.png
+
+test_img=test_shms_14.png
+# { { 68 ,-2},{   208 ,-1},{   352    , 0},{   497 , 1},{   638 , 2} } 
+
+test_img=SHMS_angle_6216.jpg
+#
+
+# ----------------------------------
+# fix spectrometer scale
+spec_zero=356
+spec_tick_commands=""
+spec_ticks=()
+for itick in $(seq 0 20) ; do
+  spec_ticks[${itick}]=$(bc <<< "(${spec_zero} + (${itick}-10)*${shms_pixels_per_tick})/1" )
+  spec_tick_commands="${spec_tick_commands} M ${spec_ticks[${itick}]},250 l 0,100 " 
+done
+
+# ----------------------------------
+# calibration
+# 
+#test_img=test_shms_14.png
+## { { 68 ,-2},{   208 ,-1},{   352    , 0},{   497 , 1},{   638 , 2} } 
+#floor_major=352
+#floor_major_p1=$(bc <<< "(${floor_major} + 10*15.5)/1 - 10")
+#floor_major_p2=$(bc <<< "(${floor_major} + 20*15.5)/1 - 24")
+#floor_major_m1=$(bc <<< "(${floor_major} - 10*15.5)/1 + 11")
+#floor_major_m2=$(bc <<< "(${floor_major} - 20*15.5)/1 + 26")
+
+ 
+#test_img=SHMS_angle_6216.jpg
+#floor_major=302
+#{ { 22 ,-2},{   159 ,-1},{   302    , 0},{   448 , 1},{   590 , 2},{   724 , 3} } 
+#floor_major_m2=$(bc <<< "(${floor_major} - 20*15.5)/1 + 30")
+#floor_major_m1=$(bc <<< "(${floor_major} - 10*15.5)/1 + 12")
+#floor_major_p1=$(bc <<< "(${floor_major} + 10*15.5)/1 - 9")
+#floor_major_p2=$(bc <<< "(${floor_major} + 20*15.5)/1 - 22")
+#floor_major_p3=$(bc <<< "(${floor_major} + 30*15.5)/1 - 43")
+
+#test_img=SHMS_angle_02120.jpg
+#floor_major=421
+##
+#floor_major_m2=$(bc <<< "(${floor_major} - 20*15.5)/1 + 30")
+#floor_major_m1=$(bc <<< "(${floor_major} - 10*15.5)/1 + 12")
+#floor_major_p1=$(bc <<< "(${floor_major} + 10*15.5)/1 - 9")
+#floor_major_p2=$(bc <<< "(${floor_major} + 20*15.5)/1 - 22")
+#floor_major_p3=$(bc <<< "(${floor_major} + 30*15.5)/1 - 43")
+
+#test_img=COIN_SHMS_angle_03306.jpg
+#floor_major=344
+##
+#floor_major_m2=$(bc <<< "(${floor_major} - 20*15.5)/1 + 30")
+#floor_major_m1=$(bc <<< "(${floor_major} - 10*15.5)/1 + 12")
+#floor_major_p1=$(bc <<< "(${floor_major} + 10*15.5)/1 - 9")
+#floor_major_p2=$(bc <<< "(${floor_major} + 20*15.5)/1 - 22")
+#floor_major_p3=$(bc <<< "(${floor_major} + 30*15.5)/1 - 43")
+
+test_img=COIN_SHMS_angle_03523.jpg
+floor_major=371
+#
+floor_major_m2=$(bc <<< "(${floor_major} - 20*15.5)/1 + 30")
+floor_major_m1=$(bc <<< "(${floor_major} - 10*15.5)/1 + 12")
+floor_major_p1=$(bc <<< "(${floor_major} + 10*15.5)/1 - 9")
+floor_major_p2=$(bc <<< "(${floor_major} + 20*15.5)/1 - 22")
+floor_major_p3=$(bc <<< "(${floor_major} + 30*15.5)/1 - 43")
+
+
+# ----------------------------------
+# production
+#floor_major=302
+#floor_major_m2=$(bc <<< "(${floor_major} - 20*15.5)/1 + 30")
+#floor_major_m1=$(bc <<< "(${floor_major} - 10*15.5)/1 + 12")
+#floor_major_p1=$(bc <<< "(${floor_major} + 10*15.5)/1 - 9")
+#floor_major_p2=$(bc <<< "(${floor_major} + 20*15.5)/1 - 22")
+#floor_major_p3=$(bc <<< "(${floor_major} + 30*15.5)/1 - 43")
+
+floor_ticks=()
+floor_lines_commands=""
+for itick in $(seq 0 50) ; do
+  floor_ticks[${itick}]=$(floor_pixel ${floor_major} $((${itick}-20)) )
+  #floor_ticks[${itick}]=$(bc <<< "(${floor_major} + (${itick}-20)*${shms_pixels_per_floortick})/1 " )
+  floor_lines_commands="${floor_lines_commands} M ${floor_ticks[${itick}]},260 l 0,-20 " 
+done
+
+floor_big_ticks=()
+floor_big_lines_commands=""
+for itick in $(seq 0 5) ; do
+  num_ticks=$(wcalc -q "(${itick} - 2)*10" )
+  floor_big_ticks[${itick}]=$(floor_pixel ${floor_major} ${num_ticks} )
+  #floor_big_ticks[${itick}]=$(bc <<< "(${floor_major} + (${itick}-2)*10*${shms_pixels_per_floortick})/1" )
+  #echo ${floor_big_ticks[${itick}]} 
+  floor_big_lines_commands="${floor_big_lines_commands} M ${floor_big_ticks[${itick}]},170 l 0,-50 " 
+done
+
+
+echo -n "{ { ${floor_major_m2} ,-2},"
+echo -n "{   ${floor_major_m1} ,-1},"
+echo -n "{   ${floor_major}    , 0},"
+echo -n "{   ${floor_major_p1} , 1},"
+echo -n "{   ${floor_major_p2} , 2},"
+echo -n "{   ${floor_major_p3} , 3} }"
+echo " "
+
+convert ${test_img}  -fill white -stroke SteelBlue1 \
+  -strokewidth 3 \
+  -draw "stroke-opacity 0.2 line $((${spec_zero} + 0 )),50 $((${spec_zero} + 0 )),400" \
+  -strokewidth 1 -stroke magenta \
+  -draw "stroke-opacity 0.4 line $((${spec_zero} + 0)),50 $((${spec_zero} +  0)),470" \
+  -strokewidth 3 -stroke gold1 \
+  -draw "path '${floor_big_lines_commands}'" \
+  -strokewidth 1 -stroke green1 \
+  -draw "path '${floor_lines_commands}'" \
+  -strokewidth 1 -stroke yellow \
+  -draw "stroke-opacity 0.5 path '${spec_tick_commands}'" \
+  -strokewidth 1 -stroke chartreuse \
+  -draw "path 'M ${floor_major},250 l 0,-100 '" \
+  marks.png
+#  -strokewidth 1 -stroke turquoise1 \
+#  -draw "path 'M ${floor_major_p1},250 l 0,-100 '" \
+#  -strokewidth 1 -stroke turquoise1 \
+#  -draw "path 'M ${floor_major_p2},250 l 0,-100 '" \
+#  -strokewidth 1 -stroke turquoise1 \
+#  -draw "path 'M ${floor_major_m1},250 l 0,-100 '" \
+#  -strokewidth 1 -stroke turquoise1 \
+#  -draw "path 'M ${floor_major_m2},250 l 0,-100 '" \
+#  -strokewidth 1 -stroke turquoise1 \
+#  -draw "path 'M ${floor_major_p3},250 l 0,-100 '" \
+#  -draw "line ${spec_ticks[0]},50 ${spec_ticks[0]},470"  \
+#  -draw "line ${spec_ticks[1]},50 ${spec_ticks[1]},470"  \
+#  -draw "line ${spec_ticks[2]},50 ${spec_ticks[2]},470"  \
+#  -draw "line ${spec_ticks[3]},50 ${spec_ticks[3]},470"  \
+#  -draw "line ${spec_ticks[4]},50 ${spec_ticks[4]},470"  \
+#  -draw "line ${spec_ticks[5]},50 ${spec_ticks[5]},470"  \
+#  -draw "line ${spec_ticks[6]},50 ${spec_ticks[6]},470"  \
+#  -draw "line ${spec_ticks[7]},50 ${spec_ticks[7]},470"  \
+#  -draw "line ${spec_ticks[8]},50 ${spec_ticks[8]},470"  \
+#  -draw "line ${spec_ticks[9]},50 ${spec_ticks[9]},470"  \
+#
+
+#convert ${test_img}  -fill white -stroke SteelBlue1 \
+#  -strokewidth 3 \
+#  -draw "stroke-opacity 0.5 line   $((${spec_zero} + 0 )),50 $((${spec_zero} + 0 )),400"  \
+#  -strokewidth 1 -stroke magenta \
+#  -draw "stroke-opacity 0.5 line   $((${spec_zero} + 0)),50 $((${spec_zero} +  0)),470"  \
+#  marks.png
+
+
