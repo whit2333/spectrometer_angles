@@ -1,0 +1,17 @@
+#!/bin/bash
+
+search_img=catalog/SHMS_14.png
+test_img=test_shms_14.png
+
+#convert -size 1000x1000x2560 gradient:lime-blue haystack.png                      # make our haystack
+#convert haystack.png ${search_img} -geometry +30+5 -composite haystack.png    # hide our needle near top-left
+#convert haystack.png ${search_img} -geometry +700+450 -composite haystack.png # hide a second needle lower down
+
+# Now search for the needles in the haystack...
+# ... two output files will be produced, "locations-0.png" and "locations-1.png"
+compare -metric RMSE -subimage-search ${test_img} ${search_img} locations.png > /dev/null 2>&1
+
+# Now look for locations where IM is 95% certain there is a match
+convert locations-1.png -threshold 98% txt: | grep white
+
+
